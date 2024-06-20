@@ -2,14 +2,40 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\post;
+use App\Models\Post;
 use App\Http\Requests\PostRequest; // useする
+use App\Models\Category;
 
 class PostController extends Controller
 {
     public function index(Post $post)
     {
-        return view('posts.index')->with(['posts' => $post->getPaginateByLimit()]);
+            // クライアントインスタンス生成
+        $client = new \GuzzleHttp\Client();
+
+        // GET通信するURL
+        $url = 'https://teratail.com/api/v1/questions';
+
+        // リクエスト送信と返却データの取得
+        // Bearerトークンにアクセストークンを指定して認証を行う
+        $response = $client->request(
+            'GET',
+            $url,
+            ['Bearer' => config('services.teratail.token')]
+        );
+        
+        // API通信で取得したデータはjson形式なので
+        // PHPファイルに対応した連想配列にデコードする
+        $questions = json_decode($response->getBody(), true);
+        
+        // index bladeに取得したデータを渡す
+        return view('posts.index')->with([
+            'posts' => $post->getPaginateByLimit(),
+            'questions' => $questions['questions'],
+        ]);
+                $posts = Post::all();
+        return view('posts.index', compact('posts'));
+        
     }
 
     public function show(Post $post)
@@ -17,9 +43,9 @@ class PostController extends Controller
         return view('posts.show')->with(['post' => $post]);
     }
 
-    public function create()
+    public function create(Category $category)
     {
-        return view('posts.create');
+        return view('posts.create')->with(['categories' => $category->get()]);
     }
 
     public function store(Post $post, PostRequest $request) // 引数をRequestからPostRequestにする
